@@ -21,7 +21,8 @@ workspace "Premake_CrossCompile"
 -----------------------------------
 -- COMPILER/LINKER CONFIGURATIONS
 -----------------------------------
-    flags "FatalWarnings"         -- All warnings on.
+    
+	flags "FatalWarnings"         -- All warnings on.
 
     filter { "platforms:*32" }
       architecture "x86"
@@ -37,6 +38,27 @@ workspace "Premake_CrossCompile"
 
     filter {} -- reset filter
 
+	
+-----------------------------------
+-- BUILD CONFIGURATIONS
+-----------------------------------
+    local cur_toolset = "default" -- workaround for premake issue #257
+                                 -- 
+    filter {"system:macosx"}           -- Mac uses clang.
+      toolset "clang"
+      cur_toolset = "clang"
+
+    filter { "action:gmake" }
+      buildoptions { "-std=c++14" }
+
+    -- Set the rpath on the executable, to allow for relative path for dynamic lib
+    filter { "system:macosx" }
+      if cur_toolset == "clang" or cur_toolset == "gcc" then  -- issue #257
+        linkoptions { "-rpath @executable_path/lib" }
+      end
+      
+    filter {} -- clear filter 	
+	
 
 -----------------------------------
 -- FILE PATH CONFIGURATIONS
@@ -120,27 +142,6 @@ workspace "Premake_CrossCompile"
 
 
 -----------------------------------
--- BUILD CONFIGURATIONS
------------------------------------
-    local cur_toolset = "default" -- workaround for premake issue #257
-                                 -- 
-    filter {"system:macosx"}           -- Mac uses clang.
-      toolset "clang"
-      cur_toolset = "clang"
-
-    filter { "action:gmake" }
-      buildoptions { "-std=c++14" }
-
-    -- Set the rpath on the executable, to allow for relative path for dynamic lib
-    filter { "system:macosx" }
-      if cur_toolset == "clang" or cur_toolset == "gcc" then  -- issue #257
-        linkoptions { "-rpath @executable_path/lib" }
-      end
-      
-    filter {} -- clear filter 
-
-
------------------------------------
 -- POST-BUILD CONFIGURATIONS
 -----------------------------------
     -- Setting up cross-platform file manipulation commands
@@ -152,7 +153,7 @@ workspace "Premake_CrossCompile"
     local SEPARATOR = "/"
 
     if(os.get() == "windows") then
-      CWD      = "chdir " .. os.getcwd() .. "; "
+      CWD      = "chdir " .. os.getcwd() .. " && "
       MKDIR     = "mkdir "
       COPY      = "xcopy /Q /E /Y /I "
       SEPARATOR = "\\"
@@ -170,7 +171,8 @@ workspace "Premake_CrossCompile"
     filter { "system:windows" }
       postbuildcommands
       {
-        path.translate ( CWD .. COPY .. source_dir_dependencies .. "/*/Libs_windows/*.dll " .. output_dir_root , SEPARATOR )
+	    -- TODO: need  to re-write for wildcard file selection on windows...
+        -- path.translate ( CWD .. COPY .. source_dir_dependencies .. "/*/Libs_windows/*.dll " .. output_dir_root , SEPARATOR )
       }
 
     -- Copying resource files to output dir (currently not used)
